@@ -1,0 +1,2 @@
+# SpamBot
+A Discord Bot
