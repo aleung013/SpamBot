@@ -1,27 +1,38 @@
-import random
+import discord
+import asyncio
 from constants import *
+import random
+
+from feeds import Feed
+
+feeds = []
 
 # Parses and Runs the command
 # Returns a string for the bot to output after running the command
 def run_command(message):
     # Parse message
     content = message.content
+    channel_mentions = message.channel_mentions
+    print(content)
     content = content[len(Prefix):] # Remove trailing newline
     content = content.split(Delim) # Split by delim
     command = content[0]
     params = content[1:]
 
     retstr = ''
+    embed = None
     if command == 'help':
         retstr = helpmessage(params)
     elif command == 'rand':
         retstr = str(rand(params))
     elif command == 'flip':
         retstr = flip(params)
+    elif command == 'addfeed':
+        retstr = add_feed(params, channel_mentions)
     else:
         retstr = Message_Unknown_Command
     print(retstr)
-    return retstr
+    return retstr, embed
 
 
 
@@ -77,3 +88,31 @@ def flip(params):
     if roll > weight:
         ret = 'Tails!'
     return ret
+
+async def grab_feeds(client):
+    '''
+    Check all feeds for updates and post updates in respective channels
+    '''
+    await client.wait_until_ready()
+    global feeds
+    while not client.is_closed:
+        for feed in feeds:
+            print('Scraping',feed.webpage)
+            links = feed.parse_site()
+            for link in links:
+                await client.send_message(feed.channel, link)
+        await asyncio.sleep(Feed_Sleep_Time)
+    
+
+def add_feed(params, channel_mentions):
+    '''
+    Add feed to be check for updates, which will be posted to specificed channel
+    Params: feed - Website that will be parsed for updates
+            channel - Discord channel where updates will be posted
+    '''
+    feed = params[0]
+    channel = channel_mentions[0]
+    global feeds
+    feed = Feed(feed, channel)
+    feeds.append(feed)
+    return Message_Successful_Add_Feed
